@@ -225,18 +225,29 @@ export class Converter {
     const extension = this.getFormatExtension(options.get('to') as string);
     const outputFile = `${tmpDir}/${path.parse(inputFile).name}.${extension}`;
     const args = options.toArgs();
-    args.push(`--output=${outputFile}`);
-    args.push(inputFile);
+    args.push(`--output=/data/${path.parse(outputFile).base}`);
+    args.push(`/data/${path.parse(inputFile).base}`);
     console.log('inputFile = ', inputFile);
-    console.log(`pandoc ${args.join(' ')}`);
+    console.log(`${EXEC_NAME} ${args.join(' ')}`);
     return new Promise((resolve, reject) => {
-      const handler = childProcess.spawn('pandoc', args);
+      const handler = childProcess.spawn('docker', [
+        'run', '--rm',
+        '-v', `${path.dirname(inputFile)}:/data`,
+        '-u', `${process.getuid()}:${process.getgid()}`,
+        'pandoc/extra',
+        ...args
+      ]);
       const errors = [];
       handler.stderr.on('data', error => {
-        errors.push(error);
+        const errorStr = error.toString('utf8');
+        if (!errorStr.startsWith('[WARNING]')) {
+          errors.push(error);
+        } else {
+          console.log(errorStr);
+        }
       });
-      handler.on('exit', () => {
-        if (errors.length) {
+      handler.on('exit', (code) => {
+        if (code !== 0 && errors.length) {
           return reject(new Error(Buffer.concat(errors).toString('utf8')));
         }
         resolve(outputFile);
