@@ -101,7 +101,7 @@ export class CommandOptions {
 
 }
 
-const EXEC_NAME = 'pandoc';
+const EXEC_NAME = 'docker run --rm -v "$(pwd):/data" -u $(id -u):$(id -g) pandoc/extra';
 
 export class Converter {
 
